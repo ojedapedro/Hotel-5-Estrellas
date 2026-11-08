@@ -1,0 +1,153 @@
+export declare enum Role {
+    SUPER_ADMIN = "SUPER_ADMIN",
+    GERENTE_GENERAL = "GERENTE_GENERAL",
+    CONTADOR = "CONTADOR",
+    RECEPCIONISTA = "RECEPCIONISTA",
+    AUDITOR_NOCTURNO = "AUDITOR_NOCTURNO",
+    CAJERO_POS = "CAJERO_POS",
+    MESERO = "MESERO",
+    EJECUTIVO_EVENTOS = "EJECUTIVO_EVENTOS",
+    COMPRAS_ALMACEN = "COMPRAS_ALMACEN",
+    RRHH_NOMINA = "RRHH_NOMINA",
+    TECNICO_MANTENIMIENTO = "TECNICO_MANTENIMIENTO",
+    SOCIO = "SOCIO"
+}
+export declare enum ModuleKey {
+    ADMIN = "ADMIN",
+    FISCAL = "FISCAL",
+    CONTABILIDAD = "CONTABILIDAD",
+    PMS = "PMS",
+    POS = "POS",
+    EVENTOS = "EVENTOS",
+    INVENTARIOS = "INVENTARIOS",
+    COMPRAS = "COMPRAS",
+    RRHH = "RRHH",
+    MANTENIMIENTO = "MANTENIMIENTO",
+    SOCIOS = "SOCIOS",
+    REPORTES = "REPORTES",
+    DASHBOARD = "DASHBOARD",
+    AUDITORIA = "AUDITORIA"
+}
+export declare enum ActionKey {
+    CREATE = "CREATE",
+    READ = "READ",
+    UPDATE = "UPDATE",
+    DELETE = "DELETE",
+    APPROVE = "APPROVE",
+    CLOSE = "CLOSE",
+    EXPORT = "EXPORT"
+}
+export declare enum Moneda {
+    USD = "USD",
+    VES = "VES",
+    EUR = "EUR"
+}
+export declare enum EstadoHabitacion {
+    DISPONIBLE = "DISPONIBLE",
+    OCUPADA = "OCUPADA",
+    BLOQUEADA = "BLOQUEADA",
+    LIMPIEZA = "LIMPIEZA",
+    MANTENIMIENTO = "MANTENIMIENTO",
+    FUERA_SERVICIO = "FUERA_SERVICIO"
+}
+export declare enum TipoHabitacion {
+    SIMPLE = "SIMPLE",
+    DOBLE = "DOBLE",
+    SUITE = "SUITE",
+    PRESIDENCIAL = "PRESIDENCIAL"
+}
+export declare enum EstadoReserva {
+    TENTATIVA = "TENTATIVA",
+    CONFIRMADA = "CONFIRMADA",
+    GARANTIZADA = "GARANTIZADA",
+    CHECKIN = "CHECKIN",
+    CHECKOUT = "CHECKOUT",
+    CANCELADA = "CANCELADA",
+    NO_SHOW = "NO_SHOW"
+}
+export declare enum CanalReserva {
+    MOSTRADOR = "MOSTRADOR",
+    WEB = "WEB",
+    TELEFONO = "TELEFONO",
+    OTA_BOOKING = "OTA_BOOKING",
+    OTA_EXPEDIA = "OTA_EXPEDIA",
+    OTA_AIRBNB = "OTA_AIRBNB",
+    DIRECTO_CORPORATIVO = "DIRECTO_CORPORATIVO"
+}
+export declare enum EstadoFolio {
+    ABIERTO = "ABIERTO",
+    CERRADO = "CERRADO",
+    ANULADO = "ANULADO"
+}
+export declare enum TipoCargoFolio {
+    HABITACION = "HABITACION",
+    POS = "POS",
+    EVENTO = "EVENTO",
+    MINIBAR = "MINIBAR",
+    LAVANDERIA = "LAVANDERIA",
+    TELEFONO = "TELEFONO",
+    MANUAL = "MANUAL",
+    IGTF = "IGTF",
+    IVA = "IVA"
+}
+export declare enum MetodoPago {
+    EFECTIVO_USD = "EFECTIVO_USD",
+    EFECTIVO_VES = "EFECTIVO_VES",
+    TARJETA_DEBITO = "TARJETA_DEBITO",
+    TARJETA_CREDITO_NAC = "TARJETA_CREDITO_NAC",
+    TARJETA_CREDITO_INT = "TARJETA_CREDITO_INT",
+    PAGO_MOVIL = "PAGO_MOVIL",
+    ZELLE = "ZELLE",
+    TRANSFERENCIA_USD = "TRANSFERENCIA_USD",
+    TRANSFERENCIA_VES = "TRANSFERENCIA_VES",
+    BINANCE = "BINANCE",
+    CARGO_HABITACION = "CARGO_HABITACION"
+}
+export declare enum EstadoComanda {
+    ABIERTA = "ABIERTA",
+    ENVIADA_COCINA = "ENVIADA_COCINA",
+    EN_PREPARACION = "EN_PREPARACION",
+    LISTA = "LISTA",
+    ENTREGADA = "ENTREGADA",
+    CERRADA = "CERRADA",
+    ANULADA = "ANULADA"
+}
+export declare enum EstadoMesa {
+    DISPONIBLE = "DISPONIBLE",
+    OCUPADA = "OCUPADA",
+    RESERVADA = "RESERVADA",
+    LIMPIEZA = "LIMPIEZA"
+}
+export declare enum TipoMovimientoInventario {
+    ENTRADA_COMPRA = "ENTRADA_COMPRA",
+    ENTRADA_DEVOLUCION = "ENTRADA_DEVOLUCION",
+    SALIDA_CONSUMO = "SALIDA_CONSUMO",
+    SALIDA_RECETA = "SALIDA_RECETA",
+    SALIDA_MERMA = "SALIDA_MERMA",
+    TRANSFERENCIA_ENTRADA = "TRANSFERENCIA_ENTRADA",
+    TRANSFERENCIA_SALIDA = "TRANSFERENCIA_SALIDA",
+    AJUSTE_POSITIVO = "AJUSTE_POSITIVO",
+    AJUSTE_NEGATIVO = "AJUSTE_NEGATIVO",
+    CONTEO_FISICO = "CONTEO_FISICO"
+}
+export interface DualCurrencyAmount {
+    montoUsd: number;
+    montoBs: number;
+    tasaBcv: number;
+}
+export interface UserSessionPayload {
+    id: string;
+    email: string;
+    nombre: string;
+    apellido: string;
+    rol: Role;
+    hotelId: string;
+}
+export interface ApiResponse<T = any> {
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data: T;
+    timestamp: string;
+}
+//# sourceMappingURL=index.d.ts.map

@@ -1,0 +1,1423 @@
+// ============================================================
+// HOTEL ERP + PMS - Prisma Schema
+// Sistema Integrado Hotel 5 Estrellas - Venezuela
+// Versión: 1.0 | Fase 1
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Role {
+  SUPER_ADMIN
+  GERENTE_GENERAL
+  CONTADOR
+  RECEPCIONISTA
+  AUDITOR_NOCTURNO
+  CAJERO_POS
+  MESERO
+  EJECUTIVO_EVENTOS
+  COMPRAS_ALMACEN
+  RRHH_NOMINA
+  TECNICO_MANTENIMIENTO
+  SOCIO
+}
+
+enum ModuleKey {
+  ADMIN
+  FISCAL
+  CONTABILIDAD
+  PMS
+  POS
+  EVENTOS
+  INVENTARIOS
+  COMPRAS
+  RRHH
+  MANTENIMIENTO
+  SOCIOS
+  REPORTES
+  DASHBOARD
+  AUDITORIA
+}
+
+enum ActionKey {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  APPROVE
+  CLOSE
+  EXPORT
+}
+
+enum Moneda {
+  USD
+  VES
+  EUR
+}
+
+enum EstadoHabitacion {
+  DISPONIBLE
+  OCUPADA
+  BLOQUEADA
+  LIMPIEZA
+  MANTENIMIENTO
+  FUERA_SERVICIO
+}
+
+enum TipoHabitacion {
+  SIMPLE
+  DOBLE
+  SUITE
+  PRESIDENCIAL
+}
+
+enum EstadoReserva {
+  TENTATIVA
+  CONFIRMADA
+  GARANTIZADA
+  CHECKIN
+  CHECKOUT
+  CANCELADA
+  NO_SHOW
+}
+
+enum CanalReserva {
+  MOSTRADOR
+  WEB
+  TELEFONO
+  OTA_BOOKING
+  OTA_EXPEDIA
+  OTA_AIRBNB
+  DIRECTO_CORPORATIVO
+}
+
+enum EstadoFolio {
+  ABIERTO
+  CERRADO
+  ANULADO
+}
+
+enum TipoCargoFolio {
+  HABITACION
+  POS
+  EVENTO
+  MINIBAR
+  LAVANDERIA
+  TELEFONO
+  MANUAL
+  IGTF
+  IVA
+}
+
+enum MetodoPago {
+  EFECTIVO_USD
+  EFECTIVO_VES
+  TARJETA_DEBITO
+  TARJETA_CREDITO_NAC
+  TARJETA_CREDITO_INT
+  PAGO_MOVIL
+  ZELLE
+  TRANSFERENCIA_USD
+  TRANSFERENCIA_VES
+  BINANCE
+  CARGO_HABITACION
+}
+
+enum EstadoComanda {
+  ABIERTA
+  ENVIADA_COCINA
+  EN_PREPARACION
+  LISTA
+  ENTREGADA
+  CERRADA
+  ANULADA
+}
+
+enum EstadoMesa {
+  DISPONIBLE
+  OCUPADA
+  RESERVADA
+  LIMPIEZA
+}
+
+enum TipoMovimientoInventario {
+  ENTRADA_COMPRA
+  ENTRADA_DEVOLUCION
+  SALIDA_CONSUMO
+  SALIDA_RECETA
+  SALIDA_MERMA
+  TRANSFERENCIA_ENTRADA
+  TRANSFERENCIA_SALIDA
+  AJUSTE_POSITIVO
+  AJUSTE_NEGATIVO
+  CONTEO_FISICO
+}
+
+enum TipoCuenta {
+  ACTIVO
+  PASIVO
+  PATRIMONIO
+  INGRESO
+  EGRESO
+}
+
+enum TipoAsiento {
+  MANUAL
+  AUTOMATICO_PMS
+  AUTOMATICO_POS
+  AUTOMATICO_COMPRAS
+  AUTOMATICO_NOMINA
+  AUTOMATICO_AUDITORIA
+  AUTOMATICO_DISTRIBUCION
+  DIFERENCIAL_CAMBIARIO
+  DEPRECIACION
+}
+
+enum EstadoAsiento {
+  BORRADOR
+  APROBADO
+  ANULADO
+}
+
+enum EstadoOrdenCompra {
+  BORRADOR
+  ENVIADA
+  APROBADA_N1
+  APROBADA_N2
+  APROBADA_N3
+  RECIBIDA_PARCIAL
+  RECIBIDA_TOTAL
+  FACTURADA
+  PAGADA
+  ANULADA
+}
+
+enum EstadoPeriodo {
+  ABIERTO
+  CERRADO
+  BLOQUEADO
+}
+
+enum EstadoDistribucion {
+  SIMULACION
+  REVISION
+  APROBADO
+  CERRADO
+}
+
+enum TipoOT {
+  CORRECTIVA
+  PREVENTIVA
+  MEJORA
+}
+
+enum EstadoOT {
+  PENDIENTE
+  ASIGNADA
+  EN_PROCESO
+  COMPLETADA
+  CANCELADA
+}
+
+// ============================================================
+// MÓDULO 1: NÚCLEO Y SEGURIDAD
+// ============================================================
+
+model Hotel {
+  id               String   @id @default(uuid())
+  nombre           String
+  rif              String   @unique
+  direccionFiscal  String
+  telefono         String?
+  email            String?
+  logoUrl          String?
+  website          String?
+  // Configuración fiscal
+  ivaGeneral       Decimal  @default(16) @db.Decimal(5, 2)
+  ivaReducido      Decimal  @default(8) @db.Decimal(5, 2)
+  igtfPorcentaje   Decimal  @default(3) @db.Decimal(5, 2)
+  // Configuración operativa
+  totalHabitaciones Int     @default(200)
+  zonaHoraria      String   @default("America/Caracas")
+  horaAuditoria    String   @default("23:59")
+  reservaOperativaUsd Decimal @default(50000) @db.Decimal(18, 4)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  usuarios         Usuario[]
+  periodos         PeriodoContable[]
+  tasasBcv         TasaBcv[]
+
+  @@map("hoteles")
+}
+
+model Usuario {
+  id              String    @id @default(uuid())
+  hotelId         String
+  email           String    @unique
+  passwordHash    String
+  nombre          String
+  apellido        String
+  cedula          String?   @unique
+  telefono        String?
+  rol             Role
+  activo          Boolean   @default(true)
+  twoFactorSecret String?
+  twoFactorEnabled Boolean  @default(false)
+  ultimoAcceso    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdBy       String?
+
+  hotel           Hotel     @relation(fields: [hotelId], references: [id])
+  sesiones        Sesion[]
+  auditoria       BitacoraAuditoria[] @relation("UsuarioAuditoria")
+  reservasCreadas Reserva[] @relation("ReservaCreador")
+  asientosCreados AsientoContable[] @relation("AsientoCreador")
+
+  // Fase 2 relations
+  empleado              Empleado?       @relation
+  empleadosCreadosPor   Empleado[]      @relation("EmpleadoCreadoPor")
+  proveedoresCreadosPor Proveedor[]     @relation("ProveedorCreadoPor")
+  ordenesCompraCreadas  OrdenCompra[]   @relation("OrdenCompraCreadoPor")
+  ordenesCompraAprobadas OrdenCompra[]  @relation("OrdenCompraAprobadoPor")
+  eventosAsignados      Evento[]        @relation("EventoEjecutivo")
+  eventosConfirmados    Evento[]        @relation("EventoConfirmadoPor")
+  nominasCreadas        Nomina[]        @relation("NominaCreadoPor")
+  nominasAprobadas      Nomina[]        @relation("NominaAprobadoPor")
+  vacacionesAprobadas   Vacacion[]      @relation("VacacionAprobadaPor")
+  otAsignadas           OrdenTrabajo[]  @relation("OTAsignadoA")
+  otSolicitadas         OrdenTrabajo[]  @relation("OTSolicitante")
+
+  @@map("usuarios")
+}
+
+model Sesion {
+  id          String    @id @default(uuid())
+  usuarioId   String
+  token       String    @unique
+  refreshToken String?  @unique
+  ip          String?
+  userAgent   String?
+  expiraEn    DateTime
+  activa      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id])
+
+  @@map("sesiones")
+}
+
+model Permiso {
+  id       String    @id @default(uuid())
+  rol      Role
+  modulo   ModuleKey
+  accion   ActionKey
+
+  @@unique([rol, modulo, accion])
+  @@map("permisos")
+}
+
+model BitacoraAuditoria {
+  id           String   @id @default(uuid())
+  tabla        String
+  registroId   String
+  accion       String   // INSERT | UPDATE | DELETE | APPROVE | LOGIN | LOGOUT
+  datosAntes   Json?
+  datosDespues Json?
+  usuarioId    String?
+  ip           String?
+  userAgent    String?
+  timestamp    DateTime @default(now())
+  modulo       String?
+  descripcion  String?
+
+  usuario      Usuario? @relation("UsuarioAuditoria", fields: [usuarioId], references: [id])
+
+  @@index([tabla, registroId])
+  @@index([usuarioId])
+  @@index([timestamp])
+  @@map("bitacora_auditoria")
+}
+
+// ============================================================
+// MÓDULO 2: FISCAL Y TASAS
+// ============================================================
+
+model TasaBcv {
+  id         String   @id @default(uuid())
+  hotelId    String
+  fecha      DateTime @db.Date
+  tasaUsd    Decimal  @db.Decimal(10, 4)  // VES por 1 USD
+  tasaEur    Decimal? @db.Decimal(10, 4)
+  fuente     String   @default("BCV_API")
+  createdAt  DateTime @default(now())
+
+  hotel      Hotel    @relation(fields: [hotelId], references: [id])
+
+  @@unique([hotelId, fecha])
+  @@index([fecha])
+  @@map("tasas_bcv")
+}
+
+model ConfigRetencion {
+  id               String   @id @default(uuid())
+  tipo             String   // IVA_75 | IVA_100 | ISLR_HONORARIOS | ISLR_SERVICIOS | ISLR_BIENES
+  descripcion      String
+  porcentaje       Decimal  @db.Decimal(5, 2)
+  activo           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("config_retenciones")
+}
+
+// ============================================================
+// MÓDULO 3: CONTABILIDAD
+// ============================================================
+
+model PeriodoContable {
+  id          String        @id @default(uuid())
+  hotelId     String
+  anio        Int
+  mes         Int           // 1-12
+  estado      EstadoPeriodo @default(ABIERTO)
+  fechaCierre DateTime?
+  cerradoPor  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  hotel       Hotel         @relation(fields: [hotelId], references: [id])
+  asientos    AsientoContable[]
+
+  @@unique([hotelId, anio, mes])
+  @@map("periodos_contables")
+}
+
+model CuentaContable {
+  id              String         @id @default(uuid())
+  codigo          String         @unique
+  nombre          String
+  tipo            TipoCuenta
+  nivel           Int            // 1-6
+  cuentaPadreId   String?
+  esMovimiento    Boolean        @default(true) // false = solo agrupadora
+  activa          Boolean        @default(true)
+  descripcion     String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  cuentaPadre     CuentaContable?  @relation("JerarquiaCuentas", fields: [cuentaPadreId], references: [id])
+  cuentasHijas    CuentaContable[] @relation("JerarquiaCuentas")
+  detallesAsiento DetalleAsiento[]
+
+  @@index([codigo])
+  @@map("cuentas_contables")
+}
+
+model AsientoContable {
+  id              String         @id @default(uuid())
+  periodoId       String
+  numero          String         @unique // Número correlativo
+  fecha           DateTime       @db.Date
+  descripcion     String
+  tipo            TipoAsiento
+  estado          EstadoAsiento  @default(BORRADOR)
+  // Moneda dual
+  totalDebeUsd    Decimal        @db.Decimal(18, 4)
+  totalHaberUsd   Decimal        @db.Decimal(18, 4)
+  totalDebeBs     Decimal        @db.Decimal(18, 4)
+  totalHaberBs    Decimal        @db.Decimal(18, 4)
+  tasaBcv         Decimal        @db.Decimal(10, 4)
+  // Referencia al documento origen
+  moduloOrigen    String?
+  documentoId     String?
+  // Auditoría
+  creadoPor       String
+  aprobadoPor     String?
+  anulado         Boolean        @default(false)
+  motivoAnulacion String?
+  asientoInversoId String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  periodo         PeriodoContable @relation(fields: [periodoId], references: [id])
+  creador         Usuario         @relation("AsientoCreador", fields: [creadoPor], references: [id])
+  detalles        DetalleAsiento[]
+
+  @@index([periodoId])
+  @@index([fecha])
+  @@map("asientos_contables")
+}
+
+model DetalleAsiento {
+  id              String          @id @default(uuid())
+  asientoId       String
+  cuentaId        String
+  descripcion     String?
+  // Moneda dual
+  debeUsd         Decimal         @default(0) @db.Decimal(18, 4)
+  haberUsd        Decimal         @default(0) @db.Decimal(18, 4)
+  debeBs          Decimal         @default(0) @db.Decimal(18, 4)
+  haberBs         Decimal         @default(0) @db.Decimal(18, 4)
+  centroCostoId   String?
+
+  asiento         AsientoContable @relation(fields: [asientoId], references: [id])
+  cuenta          CuentaContable  @relation(fields: [cuentaId], references: [id])
+
+  @@map("detalles_asiento")
+}
+
+// ============================================================
+// MÓDULO 4: PMS — HABITACIONES Y RESERVAS
+// ============================================================
+
+model TipoHabitacionCatalogo {
+  id           String    @id @default(uuid())
+  nombre       String
+  tipo         TipoHabitacion
+  capacidad    Int
+  descripcion  String?
+  amenidades   Json?     // Array de strings: ['wifi', 'jacuzzi', 'terraza', ...]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  habitaciones Habitacion[]
+  tarifas      Tarifa[]
+
+  @@map("tipos_habitacion")
+}
+
+model Habitacion {
+  id                 String           @id @default(uuid())
+  numero             String           @unique // "101", "202", "SUIT-01"
+  tipoId             String
+  piso               Int
+  estado             EstadoHabitacion @default(DISPONIBLE)
+  estadoHousekeeping String           @default("LIMPIA") // LIMPIA | SUCIA | EN_LIMPIEZA | BLOQUEADA
+  caracteristicas    Json?
+  notas              String?
+  activa             Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  tipo            TipoHabitacionCatalogo @relation(fields: [tipoId], references: [id])
+  reservas        Reserva[]
+  estancias       Estancia[]
+  ordenesTrabajoOT OrdenTrabajo[]
+
+  @@index([estado])
+  @@index([estadoHousekeeping])
+  @@map("habitaciones")
+}
+
+model Temporada {
+  id          String    @id @default(uuid())
+  nombre      String    // "Alta", "Baja", "Semana Santa", "Navidad"
+  fechaInicio DateTime  @db.Date
+  fechaFin    DateTime  @db.Date
+  activa      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  tarifas     Tarifa[]
+
+  @@map("temporadas")
+}
+
+model Tarifa {
+  id              String                 @id @default(uuid())
+  tipoHabId       String
+  temporadaId     String?
+  nombre          String                 // "Rack", "Corporativa", "OTA", "Grupo"
+  precioUsd       Decimal                @db.Decimal(10, 2)
+  incluyeDesayuno Boolean                @default(false)
+  vigenciaDesde   DateTime               @db.Date
+  vigenciaHasta   DateTime?              @db.Date
+  activa          Boolean                @default(true)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  tipoHab         TipoHabitacionCatalogo @relation(fields: [tipoHabId], references: [id])
+  temporada       Temporada?             @relation(fields: [temporadaId], references: [id])
+  reservas        Reserva[]
+
+  @@map("tarifas")
+}
+
+model PoliticaCancelacion {
+  id                 String    @id @default(uuid())
+  nombre             String
+  descripcion        String
+  horasAntelacion    Int       // horas antes del checkin para cancelar sin cargo
+  penalidadPct       Decimal   @db.Decimal(5, 2) // % del total a cobrar
+  activa             Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+
+  reservas           Reserva[]
+
+  @@map("politicas_cancelacion")
+}
+
+model Huesped {
+  id               String    @id @default(uuid())
+  nombre           String
+  apellido         String
+  documentoTipo    String    // CEDULA | PASAPORTE | RIF
+  documentoNum     String
+  nacionalidad     String?
+  email            String?
+  telefono         String?
+  fechaNacimiento  DateTime? @db.Date
+  notas            String?
+  vipLevel         Int       @default(0) // 0=normal, 1=vip, 2=muy vip
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  reservas         Reserva[]
+  estancias        Estancia[]
+
+  @@unique([documentoTipo, documentoNum])
+  @@index([email])
+  @@map("huespedes")
+}
+
+model Reserva {
+  id                   String              @id @default(uuid())
+  codigoReserva        String              @unique // "RES-2026-00001"
+  huespedId            String
+  habitacionId         String
+  tarifaId             String
+  politicaCancelId     String?
+  canal                CanalReserva        @default(MOSTRADOR)
+  estado               EstadoReserva       @default(CONFIRMADA)
+  fechaLlegada         DateTime            @db.Date
+  fechaSalida          DateTime            @db.Date
+  noches               Int
+  adultos              Int                 @default(1)
+  ninos                Int                 @default(0)
+  montoAnticipo        Decimal             @default(0) @db.Decimal(10, 2)
+  montoAnticipoUsd     Decimal             @default(0) @db.Decimal(10, 2)
+  montoAnticipoVes     Decimal             @default(0) @db.Decimal(18, 4)
+  tasaBcvAnticipo      Decimal?            @db.Decimal(10, 4)
+  notas                String?
+  notasInternas        String?
+  referenciaOta        String?
+  creadoPor            String
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  huesped              Huesped             @relation(fields: [huespedId], references: [id])
+  habitacion           Habitacion          @relation(fields: [habitacionId], references: [id])
+  tarifa               Tarifa              @relation(fields: [tarifaId], references: [id])
+  politicaCancel       PoliticaCancelacion? @relation(fields: [politicaCancelId], references: [id])
+  creador              Usuario             @relation("ReservaCreador", fields: [creadoPor], references: [id])
+  estancias            Estancia[]
+
+  @@index([fechaLlegada, fechaSalida])
+  @@index([estado])
+  @@index([huespedId])
+  @@map("reservas")
+}
+
+model Estancia {
+  id              String      @id @default(uuid())
+  reservaId       String?
+  habitacionId    String
+  huespedId       String
+  fechaCheckin    DateTime
+  fechaCheckout   DateTime?
+  estado          String      @default("ACTIVA") // ACTIVA | CERRADA
+  noches          Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  reserva         Reserva?    @relation(fields: [reservaId], references: [id])
+  habitacion      Habitacion  @relation(fields: [habitacionId], references: [id])
+  huesped         Huesped     @relation(fields: [huespedId], references: [id])
+  folios          Folio[]
+
+  @@map("estancias")
+}
+
+model Folio {
+  id          String      @id @default(uuid())
+  codigoFolio String      @unique // "FOL-2026-00001"
+  estanciaId  String
+  estado      EstadoFolio @default(ABIERTO)
+  saldoUsd    Decimal     @default(0) @db.Decimal(18, 4)
+  saldoBs     Decimal     @default(0) @db.Decimal(18, 4)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  estancia    Estancia    @relation(fields: [estanciaId], references: [id])
+  cargos      CargoFolio[]
+  pagos       PagoFolio[]
+
+  @@map("folios")
+}
+
+model CargoFolio {
+  id              String         @id @default(uuid())
+  folioId         String
+  concepto        String
+  tipo            TipoCargoFolio
+  // Moneda dual
+  montoUsd        Decimal        @db.Decimal(18, 4)
+  montoBs         Decimal        @db.Decimal(18, 4)
+  tasaBcv         Decimal        @db.Decimal(10, 4)
+  // IVA
+  baseImponibleUsd Decimal       @db.Decimal(18, 4)
+  ivaUsd          Decimal        @default(0) @db.Decimal(18, 4)
+  ivaBs           Decimal        @default(0) @db.Decimal(18, 4)
+  ivaAlicuota     Decimal        @default(16) @db.Decimal(5, 2)
+  // Referencias
+  origenModulo    String?        // POS, EVENTOS, PMS
+  origenId        String?
+  anulado         Boolean        @default(false)
+  motivoAnulacion String?
+  creadoPor       String?
+  createdAt       DateTime       @default(now())
+
+  folio           Folio          @relation(fields: [folioId], references: [id])
+
+  @@index([folioId])
+  @@map("cargos_folio")
+}
+
+model PagoFolio {
+  id              String      @id @default(uuid())
+  folioId         String
+  metodoPago      MetodoPago
+  referencia      String?
+  // Moneda dual
+  montoOriginal   Decimal     @db.Decimal(18, 4)
+  monedaOriginal  Moneda
+  tasaBcvCongelada Decimal    @db.Decimal(10, 4)
+  montoUsd        Decimal     @db.Decimal(18, 4)
+  montoBs         Decimal     @db.Decimal(18, 4)
+  // IGTF (aplica si pago en divisas)
+  igtfPorcentaje  Decimal     @default(0) @db.Decimal(5, 2)
+  igtfMonto       Decimal     @default(0) @db.Decimal(18, 4)
+  // Auditoría
+  anulado         Boolean     @default(false)
+  creadoPor       String?
+  createdAt       DateTime    @default(now())
+
+  folio           Folio       @relation(fields: [folioId], references: [id])
+
+  @@index([folioId])
+  @@map("pagos_folio")
+}
+
+// ============================================================
+// MÓDULO 5: POS — RESTAURANTE
+// ============================================================
+
+model PuntoVenta {
+  id          String    @id @default(uuid())
+  nombre      String    // "Restaurante Principal", "Bar", "Room Service", "Piscina"
+  area        String?
+  activo      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  mesas       Mesa[]
+  turnos      TurnoCaja[]
+  comandas    Comanda[]
+
+  @@map("puntos_venta")
+}
+
+model Mesa {
+  id              String     @id @default(uuid())
+  puntoVentaId    String
+  numero          String     // "M-01", "B-05"
+  capacidad       Int        @default(4)
+  estado          EstadoMesa @default(DISPONIBLE)
+  posicionX       Int?       // Para el plano visual
+  posicionY       Int?
+  activa          Boolean    @default(true)
+
+  puntoVenta      PuntoVenta @relation(fields: [puntoVentaId], references: [id])
+  comandas        Comanda[]
+
+  @@unique([puntoVentaId, numero])
+  @@map("mesas")
+}
+
+model CategoriaMenu {
+  id          String     @id @default(uuid())
+  nombre      String     // "Entradas", "Platos Principales", "Bebidas", etc.
+  orden       Int        @default(0)
+  activa      Boolean    @default(true)
+
+  productos   ProductoMenu[]
+
+  @@map("categorias_menu")
+}
+
+model ProductoMenu {
+  id              String        @id @default(uuid())
+  categoriaId     String
+  codigo          String        @unique
+  nombre          String
+  descripcion     String?
+  precioUsd       Decimal       @db.Decimal(10, 2)
+  tieneReceta     Boolean       @default(false)
+  disponible      Boolean       @default(true)
+  imageUrl        String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  categoria       CategoriaMenu  @relation(fields: [categoriaId], references: [id])
+  receta          Receta?
+  itemsComanda    ItemComanda[]
+
+  @@map("productos_menu")
+}
+
+model Articulo {
+  id               String        @id @default(uuid())
+  codigo           String        @unique
+  codigoBarra      String?       @unique
+  nombre           String
+  descripcion      String?
+  unidadMedida     String        // kg, lt, unidad, caja, etc.
+  costoPromedioUsd Decimal       @default(0) @db.Decimal(18, 6)
+  stockMinimo      Decimal       @default(0) @db.Decimal(18, 4)
+  stockMaximo      Decimal?      @db.Decimal(18, 4)
+  esPerecible      Boolean       @default(false)
+  categoria        String?
+  categoriaId      String?       // para filtrado por categoría de compras
+  activo           Boolean       @default(true)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  existencias      ExistenciaAlmacen[]
+  movimientos      MovimientoInventario[]
+  ingredientes     IngredienteReceta[]
+  itemsOrdenCompra ItemOrdenCompra[]
+
+  @@map("articulos")
+}
+
+model Receta {
+  id              String              @id @default(uuid())
+  productoId      String              @unique
+  porciones       Decimal             @default(1) @db.Decimal(10, 4)
+  instrucciones   String?
+  tiempoPreparacion Int?              // en minutos
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  producto        ProductoMenu        @relation(fields: [productoId], references: [id])
+  ingredientes    IngredienteReceta[]
+
+  @@map("recetas")
+}
+
+model IngredienteReceta {
+  id          String   @id @default(uuid())
+  recetaId    String
+  articuloId  String
+  cantidad    Decimal  @db.Decimal(18, 4)
+  unidad      String
+
+  receta      Receta   @relation(fields: [recetaId], references: [id])
+  articulo    Articulo @relation(fields: [articuloId], references: [id])
+
+  @@unique([recetaId, articuloId])
+  @@map("ingredientes_receta")
+}
+
+model TurnoCaja {
+  id              String     @id @default(uuid())
+  puntoVentaId    String
+  cajeroId        String
+  fechaApertura   DateTime
+  fechaCierre     DateTime?
+  saldoInicial    Decimal    @db.Decimal(18, 4)
+  saldoFinal      Decimal?   @db.Decimal(18, 4)
+  estado          String     @default("ABIERTO") // ABIERTO | CERRADO
+  notas           String?
+  createdAt       DateTime   @default(now())
+
+  puntoVenta      PuntoVenta @relation(fields: [puntoVentaId], references: [id])
+  comandas        Comanda[]
+
+  @@map("turnos_caja")
+}
+
+model Comanda {
+  id              String        @id @default(uuid())
+  codigoComanda   String        @unique // "CMD-2026-00001"
+  puntoVentaId    String
+  mesaId          String?
+  turnoCajaId     String?
+  meseroId        String?
+  cajeroId        String?
+  estado          EstadoComanda @default(ABIERTA)
+  // Totales
+  subtotalUsd     Decimal       @default(0) @db.Decimal(18, 4)
+  ivaUsd          Decimal       @default(0) @db.Decimal(18, 4)
+  igtfUsd         Decimal       @default(0) @db.Decimal(18, 4)
+  totalUsd        Decimal       @default(0) @db.Decimal(18, 4)
+  subtotalBs      Decimal       @default(0) @db.Decimal(18, 4)
+  totalBs         Decimal       @default(0) @db.Decimal(18, 4)
+  tasaBcv         Decimal?      @db.Decimal(10, 4)
+  // Para cargo a folio
+  folioId         String?
+  notas           String?
+  anulada         Boolean       @default(false)
+  motivoAnulacion String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  puntoVenta      PuntoVenta    @relation(fields: [puntoVentaId], references: [id])
+  mesa            Mesa?         @relation(fields: [mesaId], references: [id])
+  turnoCaja       TurnoCaja?    @relation(fields: [turnoCajaId], references: [id])
+  items           ItemComanda[]
+  pagos           PagoComanda[]
+
+  @@index([estado])
+  @@map("comandas")
+}
+
+model ItemComanda {
+  id              String       @id @default(uuid())
+  comandaId       String
+  productoId      String
+  cantidad        Decimal      @db.Decimal(10, 2)
+  precioUnitUsd   Decimal      @db.Decimal(10, 2)
+  subtotalUsd     Decimal      @db.Decimal(18, 4)
+  modificadores   Json?        // ["Sin sal", "Término medio"]
+  notas           String?
+  estado          String       @default("PENDIENTE") // PENDIENTE | ENVIADO | PREPARANDO | LISTO | ENTREGADO
+  anulado         Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+
+  comanda         Comanda      @relation(fields: [comandaId], references: [id])
+  producto        ProductoMenu @relation(fields: [productoId], references: [id])
+
+  @@map("items_comanda")
+}
+
+model PagoComanda {
+  id               String     @id @default(uuid())
+  comandaId        String
+  metodoPago       MetodoPago
+  referencia       String?
+  montoOriginal    Decimal    @db.Decimal(18, 4)
+  monedaOriginal   Moneda
+  tasaBcvCongelada Decimal    @db.Decimal(10, 4)
+  montoUsd         Decimal    @db.Decimal(18, 4)
+  montoBs          Decimal    @db.Decimal(18, 4)
+  igtfPorcentaje   Decimal    @default(0) @db.Decimal(5, 2)
+  igtfMonto        Decimal    @default(0) @db.Decimal(18, 4)
+  createdAt        DateTime   @default(now())
+
+  comanda          Comanda    @relation(fields: [comandaId], references: [id])
+
+  @@map("pagos_comanda")
+}
+
+// ============================================================
+// MÓDULO 7: INVENTARIOS (5 Almacenes)
+// ============================================================
+
+model Almacen {
+  id              String    @id @default(uuid())
+  nombre          String    // "Alimentos", "Bebidas", "Suministros Hab.", "Mantenimiento", "General"
+  departamento    String?
+  responsableId   String?
+  activo          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+
+  existencias     ExistenciaAlmacen[]
+  movimientosSalida MovimientoInventario[] @relation("AlmacenOrigen")
+  movimientosEntrada MovimientoInventario[] @relation("AlmacenDestino")
+  ordenesCompra   OrdenCompra[]
+
+  @@map("almacenes")
+}
+
+model ExistenciaAlmacen {
+  id                  String   @id @default(uuid())
+  almacenId           String
+  articuloId          String
+  cantidad            Decimal  @default(0) @db.Decimal(18, 4)
+  costoPromedio       Decimal  @default(0) @db.Decimal(18, 6) // alias en USD para inventory service
+  costoPromedioUsd    Decimal  @default(0) @db.Decimal(18, 6)
+  ultimaActualizacion DateTime @default(now())
+
+  almacen  Almacen  @relation(fields: [almacenId], references: [id])
+  articulo Articulo @relation(fields: [articuloId], references: [id])
+
+  @@unique([almacenId, articuloId])
+  @@map("existencias_almacen")
+}
+
+model MovimientoInventario {
+  id                  String                   @id @default(uuid())
+  almacenId           String?                  // almacén principal del movimiento
+  almacenOrigenId     String?
+  almacenDestinoId    String?
+  articuloId          String
+  tipo                String                   // ENTRADA | SALIDA | TRANSFERENCIA | AJUSTE
+  cantidad            Decimal                  @db.Decimal(18, 4)
+  costoUnitarioUsd    Decimal                  @db.Decimal(18, 6)
+  costoUnitarioBs     Decimal?                 @db.Decimal(18, 4)
+  costoTotalUsd       Decimal                  @db.Decimal(18, 4) @default(0)
+  tasaBcvCongelada    Decimal?                 @db.Decimal(10, 4)
+  referencia          String?                  // OC-001, CMD-001, etc.
+  referenciaDocumento String?                  // backward compat
+  lote                String?
+  vencimiento         DateTime?
+  moduloOrigen        String?
+  documentoId         String?
+  notas               String?
+  registradoPorId     String?
+  creadoPor           String?
+  createdAt           DateTime                 @default(now())
+
+  almacenOrigen   Almacen?  @relation("AlmacenOrigen", fields: [almacenOrigenId], references: [id])
+  almacenDestino  Almacen?  @relation("AlmacenDestino", fields: [almacenDestinoId], references: [id])
+  articulo        Articulo  @relation(fields: [articuloId], references: [id])
+
+  @@index([articuloId])
+  @@index([createdAt])
+  @@map("movimientos_inventario")
+}
+
+// ============================================================
+// MÓDULO 10: MANTENIMIENTO Y HOUSEKEEPING
+// ============================================================
+
+model OrdenTrabajo {
+  id                   String   @id @default(uuid())
+  correlativo          String   @unique // "OT-2026-00001"
+  codigo               String?  @unique
+  tipo                 String   // MANTENIMIENTO_CORRECTIVO | PREVENTIVO | LIMPIEZA | REPARACION
+  estado               String   @default("PENDIENTE")
+  prioridad            String   @default("NORMAL") // BAJA | NORMAL | ALTA | URGENTE
+  habitacionId         String?
+  areaComun            String?
+  descripcion          String
+  asignadoAId          String?
+  solicitanteId        String?
+  fechaProgramada      DateTime?
+  inicioEn             DateTime?
+  completadaEn         DateTime?
+  resolucion           String?
+  notasTecnico         String?
+  notas                String?
+  repuestosNecesarios  String[] @default([])
+  repuestosUsados      String[] @default([])
+  costoRepuestos       Decimal  @default(0) @db.Decimal(18, 4)
+  creadoEn             DateTime @default(now())
+  actualizadoEn        DateTime @updatedAt
+
+  habitacion   Habitacion? @relation(fields: [habitacionId], references: [id])
+  asignadoA    Usuario?    @relation("OTAsignadoA", fields: [asignadoAId], references: [id])
+  solicitante  Usuario?    @relation("OTSolicitante", fields: [solicitanteId], references: [id])
+
+  @@index([estado])
+  @@index([prioridad])
+  @@map("ordenes_trabajo")
+}
+
+// ============================================================
+// REGISTRO DE AUDITORÍA NOCTURNA
+// ============================================================
+
+model AuditoriaNocturna {
+  id              String   @id @default(uuid())
+  fechaOperacion  DateTime @db.Date // la fecha que se cerró
+  fechaEjecucion  DateTime @default(now())
+  ejecutadoPor    String?
+  habitacionesOcupadas Int
+  cargosGenerados Int
+  totalCargosUsd  Decimal  @db.Decimal(18, 4)
+  tasaBcvDia      Decimal  @db.Decimal(10, 4)
+  resumen         Json?    // detalle por habitación
+  estado          String   @default("COMPLETADA") // COMPLETADA | FALLIDA
+
+  @@map("auditorias_nocturnas")
+}
+
+
+// ============================================================
+// FASE 2: COMPRAS Y PROVEEDORES
+// ============================================================
+
+model Proveedor {
+  id                 String   @id @default(uuid())
+  nombre             String
+  rif                String   @unique
+  contacto           String?
+  telefono           String?
+  email              String?
+  direccion          String?
+  creditoDiasDefault Int      @default(30)
+  activo             Boolean  @default(true)
+  creadoPorId        String?
+  creadoEn           DateTime @default(now())
+  actualizadoEn      DateTime @updatedAt
+
+  creadoPor    Usuario?       @relation("ProveedorCreadoPor", fields: [creadoPorId], references: [id])
+  ordenesCompra OrdenCompra[]
+
+  @@map("proveedores")
+}
+
+model OrdenCompra {
+  id                   String   @id @default(uuid())
+  correlativo          String   @unique
+  proveedorId          String
+  almacenDestinoId     String
+  creadoPorId          String
+  aprobadoPorId        String?
+  tasaBcvCongelada     Decimal  @db.Decimal(10, 4)
+  fechaEntregaEsperada DateTime?
+  fechaRecepcion       DateTime?
+  notas                String?
+  notasRecepcion       String?
+  motivoCancelacion    String?
+  comentarioAprobacion String?
+  subtotalUsd          Decimal  @db.Decimal(18, 4)
+  ivaUsd               Decimal  @db.Decimal(18, 4)
+  totalUsd             Decimal  @db.Decimal(18, 4)
+  totalBs              Decimal  @db.Decimal(18, 4)
+  estado               String   @default("BORRADOR")
+  aprobadoEn           DateTime?
+  creadoEn             DateTime @default(now())
+  actualizadoEn        DateTime @updatedAt
+
+  proveedor       Proveedor         @relation(fields: [proveedorId], references: [id])
+  almacenDestino  Almacen           @relation(fields: [almacenDestinoId], references: [id])
+  creadoPor       Usuario           @relation("OrdenCompraCreadoPor", fields: [creadoPorId], references: [id])
+  aprobadoPor     Usuario?          @relation("OrdenCompraAprobadoPor", fields: [aprobadoPorId], references: [id])
+  items           ItemOrdenCompra[]
+
+  @@index([estado])
+  @@index([proveedorId])
+  @@map("ordenes_compra")
+}
+
+model ItemOrdenCompra {
+  id               String  @id @default(uuid())
+  ordenCompraId    String
+  articuloId       String
+  cantidad         Decimal @db.Decimal(18, 4)
+  cantidadRecibida Decimal @db.Decimal(18, 4) @default(0)
+  precioUnitarioUsd Decimal @db.Decimal(18, 4)
+  subtotalUsd      Decimal @db.Decimal(18, 4)
+  notas            String?
+  lote             String?
+  vencimiento      DateTime?
+
+  ordenCompra OrdenCompra @relation(fields: [ordenCompraId], references: [id], onDelete: Cascade)
+  articulo    Articulo    @relation(fields: [articuloId], references: [id])
+
+  @@map("items_orden_compra")
+}
+
+// ============================================================
+// FASE 2: EVENTOS Y BANQUETES
+// ============================================================
+
+model Salon {
+  id               String   @id @default(uuid())
+  nombre           String   @unique
+  capacidadMaxima  Int
+  precioHoraUsd    Decimal? @db.Decimal(18, 4)
+  descripcion      String?
+  equipamiento     String?
+  activo           Boolean  @default(true)
+  creadoEn         DateTime @default(now())
+
+  eventos Evento[]
+
+  @@map("salones")
+}
+
+model Evento {
+  id                  String   @id @default(uuid())
+  correlativo         String   @unique
+  nombreEvento        String
+  tipoEvento          String
+  clienteNombre       String
+  clienteContacto     String
+  clienteRif          String?
+  fechaInicio         DateTime
+  fechaFin            DateTime
+  numeroPersonas      Int
+  salonId             String
+  ejecutivoCuentasId  String
+  confirmadoPorId     String?
+  tasaBcvCongelada    Decimal  @db.Decimal(10, 4)
+  precioPersonaUsd    Decimal  @db.Decimal(18, 4) @default(0)
+  subtotalUsd         Decimal  @db.Decimal(18, 4) @default(0)
+  ivaUsd              Decimal  @db.Decimal(18, 4) @default(0)
+  totalUsd            Decimal  @db.Decimal(18, 4) @default(0)
+  totalBs             Decimal  @db.Decimal(18, 4) @default(0)
+  adelantoUsd         Decimal  @db.Decimal(18, 4) @default(0)
+  adelantoBs          Decimal  @db.Decimal(18, 4) @default(0)
+  serviciosAdicionales String[] @default([])
+  notas               String?
+  motivoCancelacion   String?
+  estado              String   @default("COTIZACION")
+  confirmadoEn        DateTime?
+  creadoEn            DateTime @default(now())
+  actualizadoEn       DateTime @updatedAt
+
+  salon             Salon   @relation(fields: [salonId], references: [id])
+  ejecutivoCuentas  Usuario @relation("EventoEjecutivo", fields: [ejecutivoCuentasId], references: [id])
+  confirmadoPor     Usuario? @relation("EventoConfirmadoPor", fields: [confirmadoPorId], references: [id])
+
+  @@index([estado])
+  @@index([fechaInicio, fechaFin])
+  @@map("eventos")
+}
+
+// ============================================================
+// FASE 2: RRHH Y NÓMINA
+// ============================================================
+
+model Empleado {
+  id               String   @id @default(uuid())
+  cedula           String   @unique
+  nombre           String
+  apellido         String
+  cargo            String
+  departamento     String
+  fechaIngreso     DateTime @db.Date
+  salarioBaseUsd   Decimal  @db.Decimal(18, 4)
+  tipoContrato     String
+  estado           String   @default("ACTIVO")
+  email            String?
+  telefono         String?
+  banco            String?
+  numeroCuenta     String?
+  tipoMonedaCuenta String   @default("USD")
+  usuarioId        String?  @unique
+  creadoPorId      String?
+  creadoEn         DateTime @default(now())
+  actualizadoEn    DateTime @updatedAt
+
+  usuario    Usuario?      @relation(fields: [usuarioId], references: [id])
+  creadoPor  Usuario?      @relation("EmpleadoCreadoPor", fields: [creadoPorId], references: [id])
+  nominas    LineaNomina[]
+  vacaciones Vacacion[]
+
+  @@index([departamento])
+  @@index([estado])
+  @@map("empleados")
+}
+
+model Nomina {
+  id                 String   @id @default(uuid())
+  periodoNombre      String
+  fechaDesde         DateTime @db.Date
+  fechaHasta         DateTime @db.Date
+  fechaPago          DateTime @db.Date
+  tasaBcvCongelada   Decimal  @db.Decimal(10, 4)
+  estado             String   @default("CALCULADA")
+  totalBrutoUsd      Decimal  @db.Decimal(18, 4) @default(0)
+  totalDeduccionesUsd Decimal @db.Decimal(18, 4) @default(0)
+  totalNetoUsd       Decimal  @db.Decimal(18, 4) @default(0)
+  totalBrutoBs       Decimal  @db.Decimal(18, 4) @default(0)
+  totalDeducciones   Decimal  @db.Decimal(18, 4) @default(0)
+  totalNetoBs        Decimal  @db.Decimal(18, 4) @default(0)
+  creadoPorId        String
+  aprobadoPorId      String?
+  aprobadoEn         DateTime?
+  pagadoEn           DateTime?
+  creadoEn           DateTime @default(now())
+
+  creadoPor  Usuario       @relation("NominaCreadoPor", fields: [creadoPorId], references: [id])
+  aprobadoPor Usuario?     @relation("NominaAprobadoPor", fields: [aprobadoPorId], references: [id])
+  lineas     LineaNomina[]
+
+  @@map("nominas")
+}
+
+model LineaNomina {
+  id               String  @id @default(uuid())
+  nominaId         String
+  empleadoId       String
+  salarioBaseUsd   Decimal @db.Decimal(18, 4)
+  salarioBaseBs    Decimal @db.Decimal(18, 4)
+  asignacionesUsd  Decimal @db.Decimal(18, 4) @default(0)
+  deduccionesUsd   Decimal @db.Decimal(18, 4) @default(0)
+  ivss             Decimal @db.Decimal(18, 4) @default(0)
+  faov             Decimal @db.Decimal(18, 4) @default(0)
+  lph              Decimal @db.Decimal(18, 4) @default(0)
+  totalBrutoUsd    Decimal @db.Decimal(18, 4)
+  totalBrutoBs     Decimal @db.Decimal(18, 4)
+  totalNetoUsd     Decimal @db.Decimal(18, 4)
+  totalNetoBs      Decimal @db.Decimal(18, 4)
+  tasaBcvCongelada Decimal @db.Decimal(10, 4)
+
+  nomina   Nomina   @relation(fields: [nominaId], references: [id], onDelete: Cascade)
+  empleado Empleado @relation(fields: [empleadoId], references: [id])
+
+  @@unique([nominaId, empleadoId])
+  @@map("lineas_nomina")
+}
+
+model Vacacion {
+  id           String   @id @default(uuid())
+  empleadoId   String
+  fechaInicio  DateTime @db.Date
+  fechaFin     DateTime @db.Date
+  dias         Int
+  notas        String?
+  aprobadoPorId String?
+  creadoEn     DateTime @default(now())
+
+  empleado   Empleado @relation(fields: [empleadoId], references: [id])
+  aprobadoPor Usuario? @relation("VacacionAprobadaPor", fields: [aprobadoPorId], references: [id])
+
+  @@map("vacaciones")
+}
+
+
+// ============================================================
+// MÓDULO 11: DISTRIBUCIÓN DE GANANCIAS A SOCIOS
+// ============================================================
+
+model Socio {
+  id                     String   @id @default(uuid())
+  nombre                 String
+  rif                    String   @unique
+  email                  String?
+  telefono               String?
+  porcentajeParticipacion Decimal  @db.Decimal(5, 2) // ej: 75.00, 12.50, 12.50
+  banco                  String?
+  numeroCuenta           String?
+  activo                 Boolean  @default(true)
+  creadoEn               DateTime @default(now())
+  actualizadoEn          DateTime @updatedAt
+
+  pagosDistribucion LineaDistribucionSocio[]
+
+  @@map("socios")
+}
+
+model DistribucionDividendo {
+  id                      String   @id @default(uuid())
+  correlativo             String   @unique
+  periodoNombre           String   // "Noviembre 2026"
+  anio                    Int
+  mes                     Int
+  baseCalculo             String   @default("UTILIDAD_CONTABLE") // UTILIDAD_CONTABLE | CAJA_DISPONIBLE
+  reservaLiquidezMinimaUsd Decimal  @default(50000) @db.Decimal(18, 4) // Fondo reserva operativo $50k USD
+  utilidadNetaUsd         Decimal  @db.Decimal(18, 4)
+  utilidadNetaBs          Decimal  @db.Decimal(18, 4)
+  montoDistribuibleUsd    Decimal  @db.Decimal(18, 4)
+  montoDistribuibleBs     Decimal  @db.Decimal(18, 4)
+  tasaBcvCongelada        Decimal  @db.Decimal(10, 4)
+  estado                  String   @default("SIMULACION") // SIMULACION | APROBADO | CERRADO_INMUTABLE | PAGADO
+  asientoContableId       String?
+  creadoPorId             String
+  aprobadoContadorId      String?
+  aprobadoGerenteId       String?
+  cerradoEn               DateTime?
+  notas                   String?
+  creadoEn                DateTime @default(now())
+
+  lineas LineaDistribucionSocio[]
+
+  @@index([estado])
+  @@map("distribuciones_dividendos")
+}
+
+model LineaDistribucionSocio {
+  id                    String   @id @default(uuid())
+  distribucionId        String
+  socioId               String
+  porcentaje            Decimal  @db.Decimal(5, 2)
+  montoUsd              Decimal  @db.Decimal(18, 4)
+  montoBs               Decimal  @db.Decimal(18, 4)
+  estadoPago            String   @default("PENDIENTE") // PENDIENTE | PAGADO
+  referenciaPago        String?
+  fechaPago             DateTime?
+
+  distribucion DistribucionDividendo @relation(fields: [distribucionId], references: [id], onDelete: Cascade)
+  socio        Socio                 @relation(fields: [socioId], references: [id])
+
+  @@unique([distribucionId, socioId])
+  @@map("lineas_distribucion_socio")
+}
+
+// ============================================================
+// MÓDULO 2: IMPUESTOS Y FISCAL VENEZOLANO (SENIAT)
+// ============================================================
+
+model FacturaFiscal {
+  id                 String   @id @default(uuid())
+  numeroFactura      String   @unique // Correlativo fiscal
+  numeroControl      String   @unique // Nº de control imprenta digital SENIAT (ej: 00-000123)
+  tipoDocumento      String   @default("FACTURA") // FACTURA | NOTA_CREDITO | NOTA_DEBITO
+  origenModulo       String   // PMS | POS | EVENTOS | MANUAL
+  origenId           String?
+  clienteNombre      String
+  clienteRif         String
+  clienteDireccion   String?
+  baseImponibleUsd   Decimal  @db.Decimal(18, 4)
+  baseImponibleBs    Decimal  @db.Decimal(18, 4)
+  exentoUsd          Decimal  @default(0) @db.Decimal(18, 4)
+  exentoBs           Decimal  @default(0) @db.Decimal(18, 4)
+  alicuotaIva        Decimal  @default(16) @db.Decimal(5, 2)
+  montoIvaUsd        Decimal  @db.Decimal(18, 4)
+  montoIvaBs         Decimal  @db.Decimal(18, 4)
+  alicuotaIgtf       Decimal  @default(0) @db.Decimal(5, 2)
+  montoIgtfUsd       Decimal  @default(0) @db.Decimal(18, 4)
+  montoIgtfBs        Decimal  @default(0) @db.Decimal(18, 4)
+  totalUsd           Decimal  @db.Decimal(18, 4)
+  totalBs            Decimal  @db.Decimal(18, 4)
+  tasaBcvCongelada   Decimal  @db.Decimal(10, 4)
+  estado             String   @default("EMITIDA") // EMITIDA | ANULADA
+  fechaEmision       DateTime @default(now())
+
+  retenciones ComprobanteRetencion[]
+
+  @@index([fechaEmision])
+  @@index([numeroControl])
+  @@map("facturas_fiscales")
+}
+
+model ComprobanteRetencion {
+  id                    String   @id @default(uuid())
+  numeroComprobante     String   @unique // formato AAAAMMNºSecuencia
+  tipoRetencion         String   // IVA_75 | IVA_100 | ISLR
+  periodoFiscal         String   // "2026-11"
+  proveedorNombre       String
+  proveedorRif          String
+  facturaFiscalId       String?
+  numeroFacturaAfectada String
+  numeroControlFactura  String?
+  totalFacturaBs        Decimal  @db.Decimal(18, 4)
+  baseImponibleBs       Decimal  @db.Decimal(18, 4)
+  ivaTotalBs            Decimal  @db.Decimal(18, 4)
+  porcentajeRetenido    Decimal  @db.Decimal(5, 2)
+  montoRetenidoBs       Decimal  @db.Decimal(18, 4)
+  montoRetenidoUsd      Decimal  @db.Decimal(18, 4)
+  tasaBcvCongelada      Decimal  @db.Decimal(10, 4)
+  fechaEmision          DateTime @default(now())
+
+  facturaFiscal FacturaFiscal? @relation(fields: [facturaFiscalId], references: [id])
+
+  @@index([periodoFiscal])
+  @@map("comprobantes_retencion")
+}
