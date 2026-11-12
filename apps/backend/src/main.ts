@@ -16,8 +16,9 @@ async function bootstrap() {
   app.use(compression());
 
   // ─── CORS ────────────────────────────────────────────────────
+  const corsOrigin = process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5173';
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: corsOrigin,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -70,12 +71,20 @@ async function bootstrap() {
     });
   }
 
+  // ─── Health Check ─────────────────────────────────────────────
+  // GET /health — para Docker HEALTHCHECK y load balancers
+  const httpAdapter = app.getHttpAdapter();
+  httpAdapter.get('/health', (_req: unknown, res: { status: (code: number) => { json: (body: object) => void } }) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
   // ─── Puerto ───────────────────────────────────────────────────
   const port = process.env.PORT ?? 3001;
   await app.listen(port);
 
   console.log(`🏨 Hotel ERP Backend corriendo en: http://localhost:${port}`);
   console.log(`📄 Swagger docs: http://localhost:${port}/api/docs`);
+  console.log(`💚 Health check: http://localhost:${port}/health`);
 }
 
 bootstrap();
